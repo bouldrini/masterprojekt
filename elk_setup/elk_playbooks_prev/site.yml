@@ -1,0 +1,6 @@
+---
+
+# - import_playbook: playbooks/test_playbook.yml
+
+ - import_playbook: playbooks/java_playbook.yml
+ - import_playbook: playbooks/elasticsearch_playbook.yml

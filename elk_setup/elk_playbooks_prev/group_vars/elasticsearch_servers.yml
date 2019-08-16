@@ -1,0 +1,16 @@
+---
+
+custom_elasticsearch_version: '7.x'
+custom_elasticsearch_package_state: latest
+custom_elasticsearch_service_state: started
+custom_elasticsearch_service_enabled: true
+custom_elasticsearch_http_port: 9200
+custom_elasticsearch_cluster_name: "ansible-elasticsearch"
+custom_elasticsearch_dns_cache_ttl: 60
+custom_elasticsearch_dns_cache_negative_ttl: 10
+custom_elasticsearch_soft_memlock: "unlimited"
+custom_elasticsearch_hard_memlock: "unlimited"
+custom_elasticsearch_number_of_open_files: 65535
+custom_elasticsearch_virtual_memory_mmap_counts: 262144
+custom_elasticsearch_number_of_threads: 4096
+custom_elasticsearch_additional_jvm_opts: "''"

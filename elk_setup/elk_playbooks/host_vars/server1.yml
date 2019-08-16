@@ -1,0 +1,4 @@
+---
+
+ansible_host: 10.133.243.173
+custom_elasticsearch_network_interface_name: "eth1"

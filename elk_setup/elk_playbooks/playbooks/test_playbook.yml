@@ -1,0 +1,32 @@
+---
+- name: PLAY - TEST JINJA2 TEMPLATING
+  hosts: elasticsearch_servers
+
+  gather_facts: yes
+  gather_timeout: 10
+
+  remote_user: bouldrini
+  become: yes
+
+  tasks:
+    - name: define heap size
+      set_fact:
+        min_heapsize: "26g"
+      when: hostvars[inventory_hostname]['ansible_memory_mb']['real'].total | int >= 52000
+
+    - name: define heap_size
+      set_fact:
+        min_heapsize: "{{ (hostvars[inventory_hostname]['ansible_memory_mb']['real'].total / 2) | int}}m"
+      when: hostvars[inventory_hostname]['ansible_memory_mb']['real'].total | int < 52000
+
+    - name: display  
+      debug: msg="{{ min_heapsize }}"
+      ignore_errors: yes
+
+#    - name: Delete old min heapsize adjustment in /etc/elasticsearch/jvm.options
+#      lineinfile:
+#        dest=/etc/elasticsearch/jvm.options
+#        regexp="^(.*)#end heap adjustment"
+#        line="{{ "-" }}Xms2000m {{ "#" }}end heap adjustment"
+#        backrefs=yes
+    

@@ -1,0 +1,199 @@
+---
+
+# ================================================================================================================
+# INSTALLING SYSTEM REQUIREMENTS LIKE REPOSITORIES
+# ================================================================================================================
+
+- include_tasks: setup-Debian.yml
+  when: ansible_os_family == 'Debian'
+
+
+
+
+
+
+# ================================================================================================================
+# ELASTICSEARCH INSTALLATION
+# ================================================================================================================
+
+- name: Install Elasticsearch.
+  package:
+    name: elasticsearch
+    state: "{{ elasticsearch_package_state }}"
+
+
+
+
+
+# ================================================================================================================
+# ELASTICSEARCH CONFIGURATION
+# ================================================================================================================
+
+# according to documentation: https://www.elastic.co/guide/en/elasticsearch/reference/current/important-settings.html
+#..................................................................................................................
+
+- name: Configure Elasticsearch.
+  template:
+    src: elasticsearch.yml.j2
+    dest: /etc/elasticsearch/elasticsearch.yml
+    owner: root
+    group: elasticsearch
+    mode: 0666
+
+
+
+
+
+# ------------------------------------------------------------------------------------------------------------------
+# ADJUSTING HEAP SIZE
+# ------------------------------------------------------------------------------------------------------------------
+
+# Systems with more than 52G set Heap Size to a limit of 26G to use recommended zero-based compressed oops
+# according to documentation: https://www.elastic.co/guide/en/elasticsearch/reference/current/heap-size.html
+#..................................................................................................................
+
+- name: Check if system memory is greater than 52G
+  debug: msg="System memory is {{ hostvars[inventory_hostname]['ansible_memory_mb']['real'].total | int }} so setting heapsize to use zero based OOP"
+  when: hostvars[inventory_hostname]['ansible_memory_mb']['real'].total | int >= 52000
+
+- name: Apply heapsize start tuning for systems with greater than 52G memory
+  lineinfile:
+    path=/etc/elasticsearch/jvm.options
+    regexp='^-Xms1g'
+    line='-Xms26g'
+  when: hostvars[inventory_hostname]['ansible_memory_mb']['real'].total | int >= 52000
+  become: true
+
+- name: Apply heapsize end tuning for systems with greater than 52G memory
+  lineinfile:
+    path=/etc/elasticsearch/jvm.options
+    regexp='^-Xmx1g'
+    line='-Xmx26g'
+  when: hostvars[inventory_hostname]['ansible_memory_mb']['real'].total | int >= 52000
+  become: true
+  notify: restart elasticsearch
+
+- name: Print extended documentation for heapsize tuning
+  debug: msg="Refer to https://www.elastic.co/guide/en/elasticsearch/guide/current/_limiting_memory_usage.html"
+  when: hostvars[inventory_hostname]['ansible_memory_mb']['real'].total | int >= 52000
+  become: true
+
+
+
+
+# Systems with less than 52G set Heap Size to 50%
+#..................................................................................................................
+
+- name: Check if system memory is less than 52G
+  debug: msg="System memory is {{ hostvars[inventory_hostname]['ansible_memory_mb']['real'].total | int }} so setting heapsize to 50%"
+  when: hostvars[inventory_hostname]['ansible_memory_mb']['real'].total | int < 52000
+
+- name: Update elasticsearch startup with start heap size
+  become: true
+  lineinfile:
+    path=/etc/elasticsearch/jvm.options
+    regexp='^-Xms1g'
+    line='-Xms{{ (hostvars[inventory_hostname]['ansible_memory_mb']['real'].total / 2) | int }}m'
+  when: hostvars[inventory_hostname]['ansible_memory_mb']['real'].total | int < 52000
+
+- name: Update elasticsearch startup with end heap size
+  become: true
+  lineinfile:
+    path=/etc/elasticsearch/jvm.options
+    regexp='^-Xmx1g'
+    line='-Xmx{{ (hostvars[inventory_hostname]['ansible_memory_mb']['real'].total / 2) | int }}m'
+  when: hostvars[inventory_hostname]['ansible_memory_mb']['real'].total|int < 52000
+  notify: restart elasticsearch
+
+- name: Update /etc/security/limits.conf to allow soft memlock for elasticsearch
+  lineinfile:
+    path: /etc/security/limits.conf
+    line: * soft memlock unlimited
+    create: yes
+
+- name: Update /etc/security/limits.conf to allow hard memlock for elasticsearch
+  lineinfile:
+    path: /etc/security/limits.conf
+    line: * hard memlock unlimited
+    create: yes
+
+
+
+
+
+# ------------------------------------------------------------------------------------------------------------------
+# ADJUSTING SYSTEM LIMITS
+# ------------------------------------------------------------------------------------------------------------------
+
+
+# according to documentation: 
+#   - https://www.elastic.co/guide/en/elasticsearch/reference/current/setting-system-settings.html
+#   - https://www.elastic.co/guide/en/elasticsearch/reference/current/file-descriptors.html
+#..................................................................................................................
+- name: Update /etc/security/limits.conf to allow a huge number of open files for elasticsearch (65535)
+  lineinfile:
+    path: /etc/security/limits.conf
+    line: *  -  nofile  65535
+    create: yes
+
+- name: Ensure pam_limits.so line is uncommented to make processes started by init.d use limits.conf
+  replace:
+    path: /etc/pam.d/su
+    regexp: '# session    required   pam_limits.so'
+    replace: 'session    required   pam_limits.so'
+
+- name: Ensure pam_limits.so line is uncommented to make processes started by init.d use limits.conf
+  replace:
+    path: /etc/pam.d/su
+    regexp: '#session    required   pam_limits.so'
+    replace: 'session    required   pam_limits.so'
+
+
+# according to documentation: 
+#    -https://www.elastic.co/guide/en/elasticsearch/reference/current/setup-configuration-memory.html
+#..................................................................................................................
+
+- name: Set elasticsearchs default variable MAX_LOCKED_MEMORY to unlimited
+  replace:
+    path: /etc/default/elasticsearch
+    regexp: '#MAX_LOCKED_MEMORY'
+    replace: 'MAX_LOCKED_MEMORY'
+
+- name: Set elasticsearchs default variable MAX_OPEN_FILES to suggested 65535
+  replace:
+    path: /etc/default/elasticsearch
+    regexp: '#MAX_OPEN_FILES'
+    replace: 'MAX_OPEN_FILES'
+
+
+
+
+- name: Update /etc/security/limits.conf to allow a huge number of threads for elasticsearch (4096)
+  lineinfile:
+    path: /etc/security/limits.conf
+    line: *  -  nproc  4096
+    create: yes
+
+
+
+
+
+# ================================================================================================================
+# RESTARTING ELASTICSEARCH AFTER CONFIGURATION
+# ================================================================================================================
+
+- name: Force a restart if configuration has changed.
+  meta: flush_handlers
+
+- name: Start Elasticsearch.
+  service:
+    name: elasticsearch
+    state: "started"
+    enabled: "true"
+
+- name: Make sure Elasticsearch is running before proceeding.
+  wait_for:
+    host: "{{ elasticsearch_network_host }}"
+    port: "{{ elasticsearch_http_port }}"
+    delay: 3
+    timeout: 300

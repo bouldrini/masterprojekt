@@ -1,0 +1,248 @@
+# ==============================================================================
+# ======================== Elasticsearch Configuration =========================
+# ==============================================================================
+
+
+# ------------------------------------------
+# NOTE
+# ------------------------------------------
+
+# Elasticsearch comes with reasonable defaults for most settings.
+
+# Before you set out to tweak and tune the configuration
+#         - make sure you understand what are you trying to accomplish
+#         - make sure you understand the consequences
+
+
+
+
+# ------------------------------------------
+# CLUSTER
+# ------------------------------------------
+
+# Use a descriptive name for your cluster:
+cluster.name: ansible-elasticsearch
+
+
+
+
+# -----------------------------------------
+# NODE
+# -----------------------------------------
+
+# Use a descriptive name for the node.
+# Add custom attributes to the node.
+
+node.name: server2
+#node.attr.rack: r1
+
+
+
+
+
+# -----------------------------------------
+# PATHS
+# -----------------------------------------
+
+# Path to directory where to store the data
+# Path to log files: (separate multiple locations by comma):
+
+path.data: /var/lib/elasticsearch
+path.logs: /var/log/elasticsearch
+
+
+
+
+
+# -----------------------------------------
+# MEMORY
+# -----------------------------------------
+
+# Lock the memory on startup:
+bootstrap.memory_lock: true
+
+# Make sure that the heap size is set to about half the memory available on the system and that the owner of the process is allowed to use this limit.
+
+##### OPTION
+
+# Elasticsearch performs poorly when the system is swapping the memory.
+
+##### OPTION
+
+
+
+
+
+# -------------------------------------------------------------------------------------------------
+# NETWORK
+# Configurable parameters are described here:
+# https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-network.html
+# -------------------------------------------------------------------------------------------------
+
+# --------------------------------------------
+# Required settings
+# --------------------------------------------
+network.host: [_eth1_, _local_]
+
+# --------------------------------------------
+# Network expert settings
+# --------------------------------------------
+# network.bind_host: [eth1, _local_]
+# network.publish_host: [eth1, _local_]
+
+# --------------------------------------------
+# TCP expert settings
+# --------------------------------------------
+# network.tcp.no_delay: true
+# network.tcp.keep_alive: true
+# network.tcp.reuse_address: true
+# network.tcp.send_buffer_size: undefined
+# network.tcp.receive_buffer_size: undefined
+
+
+
+
+
+
+
+
+
+# -------------------------------------------------------------------------------------------------
+# TRANSPORT
+# Configurable parameters are described here:
+# https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-transport.html
+# -------------------------------------------------------------------------------------------------
+
+# --------------------------------------------
+# Required settings
+# --------------------------------------------
+# transport.port: 9300-9400
+
+# --------------------------------------------
+# Expert settings
+# --------------------------------------------
+# transport.publish_port: 9300-9400
+# transport.host: network.host
+# transport.publish_host: transport.host
+# transport.bind_host: transport.host
+# transport.connect_timeout: 30
+# transport.compress: false
+# transport.ping_schedule: 5
+
+
+
+
+
+
+
+
+# -------------------------------------------------------------------------------------------------
+# HTTP
+# Configurable parameters are described here:
+# https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-http.html
+# -------------------------------------------------------------------------------------------------
+
+# --------------------------------------------
+# Required settings
+# --------------------------------------------
+http.port: 9200
+
+# --------------------------------------------
+# Expert settings
+# --------------------------------------------
+# http.publish_port: http.port
+# http.bind_host: http.host
+# http.publish_host: http.host
+# http.host: network.host
+# http.max_content_length: 100mb
+# http.max_initial_line_length: 4kb
+# http.max_header_size: 8kb
+# http.compression: true
+# http.compression_level: 3
+# http.cors.enabled: false
+# http.cors.allow-origin: no origins allowed
+# http.cors.max-age: 1728000
+# http.cors.allow-methods: OPTIONS, HEAD, GET, POST, PUT, DELETE
+# http.cors.allow-headers: X-Requested-With, Content-Type, Content-Length
+# http.cors.allow-credentials: false
+# http.detailed_errors.enabled: true
+# http.pipelining.max_events: 10000
+# http.max_warning_header_count: unbounded
+# http.max_warning_header_size: unbounded
+
+
+
+
+
+
+
+
+
+# -------------------------------------------------------------------------------------------------
+# DISCOVERY
+# Configurable parameters are described here:
+# https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-discovery-settings.html
+# -------------------------------------------------------------------------------------------------
+
+# --------------------------------------------
+# Required settings
+# --------------------------------------------
+discovery.seed_hosts: [10.133.243.188]
+cluster.initial_master_nodes: [server2]
+
+# --------------------------------------------
+# Expert settings
+# --------------------------------------------
+# discovery.seed_providers: settings
+# discovery.type: single-node
+# discovery.cluster_formation_warning_timeout: 10
+# discovery.find_peers_interval: 1
+# discovery.probe.connect_timeout: 3
+# discovery.probe.handshake_timeout: 1
+# discovery.request_peers_timeout: 3
+# discovery.seed_resolver.max_concurrent_resolvers: 10
+# discovery.seed_resolver.timeout: 5
+# cluster.auto_shrink_voting_configuration: true
+# cluster.follower_lag.timeout: 90
+# cluster.join.timeout: 60
+# cluster.max_voting_config_exclusions: 10
+# cluster.publish.timeout: 30
+# cluster.no_master_block: write
+
+# --------------------------------------------
+# Dangerous settings
+# Changing these settings from the default may
+# cause your cluster to fail to elect a master
+# node or become unstable
+# --------------------------------------------
+# cluster.election.back_off_time: 100
+# cluster.election.duration: 500
+# cluster.election.initial_timeout: 100
+# cluster.election.max_timeout: 10
+# cluster.fault_detection.follower_check.interval: 1
+# cluster.fault_detection.follower_check.timeout: 10
+# cluster.fault_detection.follower_check.retry_count: 3
+# cluster.fault_detection.leader_check.interval: 1
+# cluster.fault_detection.leader_check.timeout: 10
+# cluster.fault_detection.leader_check.retry_count: 3
+
+
+
+
+# ---------------------------------------
+# GATEWAY
+# ---------------------------------------
+
+# Block initial recovery after a full cluster restart until N nodes are started:
+#gateway.recover_after_nodes: 3
+
+
+
+
+
+# ---------------------------------------
+# VARIOUS
+# ---------------------------------------
+
+# Require explicit names when deleting indices:
+#action.destructive_requires_name: true

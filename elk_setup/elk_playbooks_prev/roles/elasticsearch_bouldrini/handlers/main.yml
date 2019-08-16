@@ -1,0 +1,7 @@
+---
+- name: restart elasticsearch
+  service: name=elasticsearch state=restarted
+
+- name: reload service deamon
+  become: yes
+  command: systemctl daemon-reload

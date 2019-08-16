@@ -1,0 +1,34 @@
+- name: PLAY - install and configure Elasticsearch
+  hosts: elasticsearch_servers
+  any_errors_fatal: yes
+
+  become: yes
+  remote_user: bouldrini
+
+  gather_facts: yes
+  gather_timeout: 10
+
+  vars:
+    list_of_ips: "{{ groups['elasticsearch_servers'] | map('extract', hostvars, ['ansible_facts', 'eth1', 'ipv4', 'address']) | join(',') }}"
+    list_of_master_eligable_nodes: "{{ groups['elasticsearch_servers'] | map('extract', hostvars, ['inventory_hostname']) | join(',') }}"
+
+  roles:
+    - role: elasticsearch_bouldrini
+      elasticsearch_version: "{{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_version'] }}"
+      elasticsearch_package_state: "{{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_package_state'] }}"
+      elasticsearch_service_state: "{{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_service_state'] }}"
+      elasticsearch_service_enabled: "{{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_service_enabled'] }}"
+      elasticsearch_http_port: "{{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_http_port'] }}"
+      elasticsearch_cluster_name: "{{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_cluster_name'] }}"
+      elasticsearch_network_host: "{{ hostvars[inventory_hostname]['custom_elasticsearch_network_interface_name'] }}"
+      elasticsearch_node_name: "{{ hostvars[inventory_hostname]['inventory_hostname'] }}"
+      elasticsearch_seed_hosts: "{{ list_of_ips }}"
+      elasticsearch_initial_master_nodes: "{{ list_of_master_eligable_nodes }}"
+      elasticsearch_dns_cache_ttl: "{{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_dns_cache_ttl'] }}"
+      elasticsearch_dns_cache_negative_ttl: "{{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_dns_cache_negative_ttl'] }}"
+      elasticsearch_soft_memlock: "{{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_soft_memlock'] }}"
+      elasticsearch_hard_memlock: "{{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_hard_memlock'] }}"
+      elasticsearch_number_of_open_files: "{{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_number_of_open_files'] }}"
+      elasticsearch_virtual_memory_mmap_counts: "{{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_virtual_memory_mmap_counts'] }}"
+      elasticsearch_number_of_thread: "{{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_number_of_threads'] }}"
+      elasticsearch_additional_jvm_opts: "{{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_additional_jvm_opts'] }}"

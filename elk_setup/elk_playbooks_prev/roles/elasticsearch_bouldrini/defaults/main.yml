@@ -1,0 +1,26 @@
+---
+elasticsearch_version: '7.x'
+elasticsearch_package_state: latest
+
+elasticsearch_service_state: started
+elasticsearch_service_enabled: true
+
+elasticsearch_network_host: localhost
+elasticsearch_http_port: 9200
+
+elasticsearch_cluster_name: "unassigned_cluster_name"
+elasticsearch_node_name: "unassigned_node_name"
+
+elasticsearch_seed_hosts: []
+elasticsearch_initial_master_nodes: []
+
+elasticsearch_dns_cache_ttl: 60
+elasticsearch_dns_cache_negative_ttl: 10
+
+elasticsearch_soft_memlock: "unlimited"
+elasticsearch_hard_memlock: "unlimited"
+elasticsearch_number_of_open_files: 65535
+elasticsearch_virtual_memory_mmap_counts: 262144
+elasticsearch_number_of_threads: 4096
+
+elasticsearch_additional_jvm_opts: "''"
