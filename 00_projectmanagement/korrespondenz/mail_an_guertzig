@@ -1,0 +1,17 @@
+Guten Tag Herr Prof. Gürtzig,
+
+mir ist aufgefallen, dass es für die Installation von Elasticsearch in der Ansible-Galaxy ein Ansible-Playbook des Herstellers gibt. Es ist von der Community schlecht bewertet und deshalb bei meinen Recherchen untergegangen. Auch wenn die offizielle Referenz zu Elasticsearch die Nutzung von Ansible empfiehlt wird in der Beschreibung des Ansible-Playbooks von Elastic Docker als Tool der Wahl empfohlen. Ich bin optimistisch, dass die Installation und Konfiguration des Clusters auf beide Arten funktioniert. Nun bin ich mir aber unsicher:
+
+Sollte ich weiter an einem Ansible-Playbook festhalten oder sollte ich nun auf Docker umschwenken ?
+
+Ich hatte im Projektantrag geschrieben, dass die Installation und Konfiguration auf Ansible-Basis erfolgt. 
+
+Sollte ich Docker benutzen wäre das nicht mehr aktuell. Könnte ich den Titel meines Projekts nachträglich noch ändern, oder ist er festgelegt ?
+
+(vgl: 
+	- Elasticsearch Referenz: https://www.elastic.co/guide/en/elasticsearch/reference/current/install-elasticsearch.html#config-mgmt-tools)
+	- Elastic Ansible-Playbook: https://github.com/elastic/ansible-elasticsearch#breaking-changes
+)
+
+Freundliche Grüße,
+Richard Wieditz

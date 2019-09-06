@@ -1,7 +1,0 @@
-
-[kibana_servers]
-
-[logstash_servers]
-
-[elasticsearch_servers]
-server2

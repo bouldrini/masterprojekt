@@ -19,16 +19,16 @@ Szenarien
 	- Datenmenge:
 		- Beispieldokument (1.37 KB -> 1402 B):
 			{
-			  "title":varchar(128), 
-			  "description":varchar(1000),
-			  "price_per_month":int(5),
-			  "caution":int(5),
-			  "longitude":float(2,8),
-			  "latitude":float(2,8),
-			  "street":varchar(32),
-			  "city":varchar(32),
-			  "zip_code":varchar(8),
-			  "inserat_type":boolean(1)
+                "title" => text,
+                "tags" => keyword,
+                "category" => integer,
+                "total_rent" => integer,
+                "caution" => integer,
+                "location" => geo_point,
+                "street" => text,
+                "zip_code" => text,
+                "inserat_type" => integer,
+                "inserat_provider" => integer
 			}
 
 		- 8.000.000 Dokumente -> ca. 10.5 GB Datenmenge
@@ -51,50 +51,56 @@ Szenarien
 
 Umsetzung:
 	- Ansible Playbook zum Aufsetzen des Elasticsearch Clusters (Beitrag zur Literatur)
-		- Ubuntu 16.04
 		- empfohlene Elasticsearch und Systemeinstellungen
 			- Referenz: https://www.elastic.co/guide/en/elasticsearch/reference/current/index.html
 			- Definitive Guide: https://www.elastic.co/guide/en/elasticsearch/guide/current/index.html
 		- dynamisch skalier- und konfigurierbar (Anzahl der Server und Knotenkonfiguration einfach änderbar)
-		
-		- orientiert sich an
-			- https://galaxy.ansible.com/geerlingguy/java
-			- https://galaxy.ansible.com/geerlingguy/elasticsearch
 
-			- (https://galaxy.ansible.com/geerlingguy/logstash)
-			- (https://galaxy.ansible.com/geerlingguy/kibana)
-
+	- Erstellung des Elasticsearch Indexes
 	- Script zum Indexieren der Beispieldaten in PHP
-		- https://www.elastic.co/guide/en/elasticsearch/client/php-api/current/index.html
 
 	- Definition einer geeigneten Query Abfrage
 		- Volltextsuche auf title und description
 		- Geo-distance Filter mit longitude und latitude
 		- Filter nach Preis
+		- Paginierung auf 100 Elemente
 
-	- (Erstellung eines K6 Scripts für das Lasttest Tool app.loadimpact.com
-		- Übertragen der Query Abfrage in K6)
+	- Testerstellung in Scala (Gatling)
+
 
 
 Testdurchführung:
-	- Tests mit einem Cload Basierten Lasttest Tool 
-		- app.loadimpact.com (oder Loader.io)
+	- Test mit Gatling
 		- Tests pro Kombination aus Serverkategorie, Serveranzahl, Datenmenge und Requestanzahl
+		- Sicherung der Testergebnisse in Verzeichnisstruktur
+		- Zusammentragen der empirischen Daten
 		- Einstufung in Responsetimekategorie
 
 
 Dokumentation der Ergebnisse
+	- Auswertung
+		- Beantwortung der Kernfragen:
+			- Wieviele Knoten von einer Serverkategorie braucht es mindestens um während einer Elasticsearch Suchabfrage eine festgelegte Anzahl an Requests pro Sekunde auf ein Cluster mit einer festgelegten Datenmenge innerhalb einer festgelegten Zeitspanne abarbeiten zu können ?
+
+			- Welche Serverkategorie ist für jedes Testszenario mit guten Antowrtzeiten zu wählen, sodass die Kosten für den Betrieb des Clusters minimal werden ?
+
 	- Abgabe
+		- Projektdokumentation
 		- Ansible Playbooks
 		- Script zur Beispieldatengenerierung
-		- Beispiel Query Abfrage
-		- (K6 Script für Lasttest Tool)
+		- Testscripte
 
-	- Diagramme für Avg. Responsetime je Szenario
-	- Tabelle mit Testergebnissen
+		- Gesicherte Testergebnisse
+		- Diagramme für Avg. Responsetime je Szenario
+		- Tabelle mit Testergebnissen
 
-	- Auswertung
-		- Beantwortung der Kernfrage:
-			- Wieviele Knoten von einer Serverkategorie braucht es mindestens um eine festgelegte Anzahl an Requests pro Sekunde auf ein Cluster mit einer festgelegten Datenmenge innerhalb einer festgelegten Zeitspanne abzuarbeiten ?
 
-		- Welche Serverkategorie ist für jedes Testszenario mit guten Antowrtzeiten zu wählen, sodass die Kosten für den Betrieb des Clusters minimal werden ?
+Abgabe
+	- kleinen Teil Projektmanagementdokumente
+	- keine Wissenschaftliche Arbeit
+	- Beschreibung der Teilmodule
+	- Bilder, Diagramme in Doku
+
+
+
+

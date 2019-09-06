@@ -1,0 +1,88 @@
+---
+
+# ================================================================================================================
+# PREINSTALLATION SYSTEM CONFIGURATIONS
+# ================================================================================================================
+
+- hosts: elasticsearch_servers
+  become: yes
+  vars:
+    elasticsearch_soft_memlock: "{{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_soft_memlock'] }}"
+    elasticsearch_hard_memlock: "{{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_hard_memlock'] }}"
+    elasticsearch_number_of_open_files: "{{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_number_of_open_files'] }}"
+    elasticsearch_virtual_memory_mmap_counts: "{{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_virtual_memory_mmap_counts'] }}"
+    elasticsearch_number_of_threads: "{{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_number_of_threads'] }}"
+    elasticsearch_tmp_dir: "{{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_temp_dir'] }}"
+    elasticsearch_jvm_errors_dir: "{{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_jvm_error_dir'] }}"
+    elasticsearch_jvm_errors_file: "{{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_jvm_error_file'] }}"
+    elasticsearch_jna_tmp_dir: "{{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_jna_tmp_dir'] }}"
+
+  tasks:
+    - name: include elasticsearch_installation/elasticsearch_pre_installation_system_config.yml
+      include: elasticsearch_installation/elasticsearch_pre_installation_system_config.yml
+      tags: "installation"
+
+
+
+
+
+
+# ================================================================================================================
+# ELASTICSEARCH INSTALLATION
+# ================================================================================================================
+
+- import_playbook: elasticsearch_installation/elasticsearch_installation_master_nodes.yml
+- import_playbook: elasticsearch_installation/elasticsearch_installation_data_nodes.yml
+
+
+
+
+
+# ================================================================================================================
+# POST INSTALLATION ELASTICSEARCH CONFIGURATION
+# ================================================================================================================
+
+- hosts: elasticsearch_servers
+  become: yes
+  tags: "installation"
+  vars:
+    elasticsearch_dns_cache_ttl: "{{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_dns_cache_ttl'] }}"
+    elasticsearch_dns_cache_negative_ttl: "{{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_dns_cache_negative_ttl'] }}"
+    elasticsearch_tmp_dir: "{{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_temp_dir'] }}"
+    elasticsearch_jvm_errors_dir: "{{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_jvm_error_dir'] }}"
+    elasticsearch_jvm_errors_file: "{{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_jvm_error_file'] }}"
+    elasticsearch_jna_tmp_dir: "{{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_jna_tmp_dir'] }}"
+  tasks:
+    - name: include elasticsearch_installation/elasticsearch_post_installation_system_config.yml
+      include: elasticsearch_installation/elasticsearch_post_installation_system_config.yml
+
+
+
+
+
+
+# ================================================================================================================
+# RESTARTING ELASTICSEARCH AND DAEMONS AFTER CONFIGURATION
+# ================================================================================================================
+- hosts: elasticsearch_servers
+  become: yes
+  tags: "installation"
+  tasks:
+    - name: restart system daemons
+      command: systemctl daemon-reload
+
+    - name: Force a restart if configuration has changed.
+      meta: flush_handlers
+
+    - name: Start Elasticsearch.
+      service:
+        name: elasticsearch
+        state: "started"
+        enabled: "true"
+
+    - name: Make sure Elasticsearch is running before proceeding.
+      wait_for:
+        host: "{{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_network_host'] }}"
+        port: "{{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_http_port'] }}"
+        delay: 3
+        timeout: 300

@@ -1,0 +1,153 @@
+---
+
+# ------------------------------------------- MANUALLY CREATE ELASTICSEARCH TMPDIR ------------------------------------------
+# MANUALLY CREATE ELASTICSEARCH TMPDIR
+# according to documentation:
+#   - https://www.elastic.co/guide/en/elasticsearch/reference/current/es-tmpdir.html
+#..................................................................................................................
+- name: Manually create dedicated elasticsearch tmp Directory
+  file:
+    path: "{{ elasticsearch_tmp_dir }}"
+    owner: elasticsearch
+    group: elasticsearch
+    state: directory
+    mode: '0750'
+
+- name: Export $ES_TMPDIR variable
+  lineinfile: 
+    dest=/root/.bashrc 
+    line="export $ES_TMPDIR={{ elasticsearch_tmp_dir }}"
+    insertafter='EOF' 
+    state=present
+# ---------------------------------------- END EXPORT ELASTICSEARCH TMPDIR -----------------------------------------
+
+
+
+
+
+
+
+#------------------------------------------------ MANUALLLY CREATE DEDICATED JVM ERRORS DIRECTORY -----------------------------------------------------
+# MANUALLLY CREATE JVM ERROR FILE
+# according to documentation:
+#    - https://www.elastic.co/guide/en/elasticsearch/reference/current/error-file-path.html
+#..................................................................................................................
+- name: Manually create dedicated JVM Errors Directory
+  file:
+    path: "{{ elasticsearch_jvm_errors_dir }}"
+    owner: elasticsearch
+    group: elasticsearch
+    state: directory
+    mode: '0750'
+
+- name: Manually create dedicated JVM Errors File
+  file:
+    path: "{{ elasticsearch_jvm_errors_file }}"
+    owner: elasticsearch
+    group: elasticsearch
+    state: touch
+    mode: '0750'
+#------------------------------------------------ END MANUALLLY CREATE DEDICATED TEMP DIRECTORY -------------------------------------------------
+
+
+
+
+
+
+# ------------------------------------------- MANUALLY CREATE JNA TMPDIR ------------------------------------------
+# MANUALLY CREATE JNA TMPDIR (TO BE SURE ITS NOT MOUNTED noexec)
+# according to documentation:
+#   - https://www.elastic.co/guide/en/elasticsearch/reference/current/executable-jna-tmpdir.html
+#..................................................................................................................
+- name: Manually create dedicated JNA tmp Directory
+  file:
+    path: "{{ elasticsearch_jna_tmp_dir }}"
+    owner: elasticsearch
+    group: elasticsearch
+    state: directory
+    mode: '0750'
+# ----------------------------------------- END MANUALLY CREATE JNA TMPDIR ---------------------------------------
+
+
+
+
+
+
+
+# --------------------------------------- ADJUST FILESYSTEM PERMISSIONS-------------------------------------------
+
+- name: Change elasticsearchs log folder (/var/log/elasticsearch) permissions to 0644
+  file:
+    path: /var/log/elasticsearch
+    owner: elasticsearch
+    group: elasticsearch
+    mode: '0775'
+
+- name: Change elasticsearchs etc folder (/etc/elasticsearc)h permissions to 0644
+  file:
+    path: /etc/elasticsearch
+    owner: elasticsearch
+    group: elasticsearch
+    mode: '0775'
+
+# ---------------------------------- END ADJUST FILESYSTEM PERMISSIONS -------------------------------------------
+
+
+
+
+
+# ------------------------------------------------------------------------------------------------------------------
+# MANUALLY ENSURE CORRECT SETUP OF LimitMEMLOCK
+# important for elasticsearch hardware performance
+# according to documentation: 
+#    - https://www.elastic.co/guide/en/elasticsearch/reference/current/setup-configuration-memory.html
+#..................................................................................................................
+- name: Update /usr/lib/systemd/system/elasticsearch.service to set unlimited LimitMEMLOCK
+  lineinfile:
+    path: /usr/lib/systemd/system/elasticsearch.service
+    insertafter: '\[Service\]'
+    line: 'LimitMEMLOCK=infinity'
+    create: yes
+# ------------------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+# ---------------------------------------------- SCHEDULER ADJUSTMENTS ---------------------------------------------
+# MANUALLY ADJUST IO SCHEDULER
+# important for elasticsearch hardware performance
+# according to documentation: 
+#    - https://www.elastic.co/guide/en/elasticsearch/guide/current/hardware.html#_disks
+#..................................................................................................................
+# - name: Overwrite schduler file to change scheduler to deadline at runtime
+#   copy:
+#     content: "deadline"
+#     dest: "/sys/block/vda/queue/scheduler"
+
+- name: overwrite /etc/default/grub to change I/O scheduler to deadline persistent
+  lineinfile:
+    path: /etc/default/grub
+    regexp: '^(.*)GRUB_CMDLINE_LINUX_DEFAULT="console=tty1 console=ttyS0"(.*)$'
+    line: 'GRUB_CMDLINE_LINUX_DEFAULT="console=tty1 console=ttyS0 elevator=deadline"'
+    backrefs: yes
+
+- name: update grub
+  command: sudo update-grub2
+
+- name: Add rule to automatically detect drive mechanism (rotational / non rotational), and use deadline as scheduler for non rotational devices
+  copy:
+    content: "ACTION=='add|change', KERNEL=='vd[a-z]', ATTR{queue/rotational}=='0', ATTR{queue/scheduler}='deadline'"
+    dest: "/etc/udev/rules.d/60-ssd-scheduler.rules"
+# ---------------------------------------- END SCHEDULER ADJUSTMENTS -----------------------------------------------
+
+
+
+
+
+
+# # ---------------------------------------- INSTALL MAPPER SIZE PLUGIN -----------------------------------------------
+# - name: update grub
+#   command: sudo bin/elasticsearch-plugin install mapper-size
+# # ---------------------------------------- END INSTALL MAPPER SIZE PLUGIN -----------------------------------------------

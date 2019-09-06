@@ -1,0 +1,11 @@
+[elasticsearch_servers]
+master1
+
+[elasticsearch_master_servers]
+master1
+
+[elasticsearch_data_nodes]
+
+[kibana_servers]
+kibana1
+

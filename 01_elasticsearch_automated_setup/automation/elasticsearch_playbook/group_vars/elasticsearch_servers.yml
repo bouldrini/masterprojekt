@@ -1,0 +1,21 @@
+---
+
+custom_elasticsearch_version: '7.3.0'
+custom_elasticsearch_network_host: localhost
+custom_elasticsearch_http_port: 9200
+custom_elasticsearch_cluster_name: "ansible-elasticsearch"
+custom_elasticsearch_dns_cache_ttl: 60
+custom_elasticsearch_dns_cache_negative_ttl: 10
+custom_elasticsearch_soft_memlock: "unlimited"
+custom_elasticsearch_hard_memlock: "unlimited"
+custom_elasticsearch_number_of_open_files: 65535
+custom_elasticsearch_virtual_memory_mmap_counts: 262144
+custom_elasticsearch_number_of_threads: 4096
+custom_elasticsearch_additional_jvm_opts: "''"
+custom_elasticsearch_heap_dump_path: "/var/lib/elasticsearch"
+custom_elasticsearch_data_dir: "/var/data/elasticsearch"
+custom_elasticsearch_log_dir: "/var/log/elasticsearch"
+custom_elasticsearch_temp_dir: "/etc/elasticsearch_tmp"
+custom_elasticsearch_jvm_error_dir: "/etc/elasticsearch_jvm_error"
+custom_elasticsearch_jvm_error_file: "/etc/elasticsearch_jvm_error/jvm_errors.log"
+custom_elasticsearch_jna_tmp_dir: "/etc/elasticsearch_jna_tmp"

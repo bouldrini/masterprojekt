@@ -1,0 +1,416 @@
+---
+
+# ================================================================================================================
+# PREDEFINING VARIABLES
+# ================================================================================================================
+
+- hosts: elasticsearch_servers
+  become: yes
+  gather_facts: yes
+  tags: "installation"
+  tasks:
+    # --------------------------------------------------- HEAP SIZING -------------------------------------------------
+    # CALCULATING HEAP SIZE DEPENDENT ON SYSTEM MEMORT (USED IN ROLE CONFIGURATION BELOW)
+    # according to documentation:
+    #   - https://www.elastic.co/guide/en/elasticsearch/reference/current/heap-size.html
+    #   - https://www.elastic.co/guide/en/elasticsearch/guide/current/heap-sizing.html#heap-sizing
+    #..................................................................................................................
+    - name: define heap size for systems with more than 52G memory
+      set_fact:
+        min_heapsize: "26g"
+      when: hostvars[inventory_hostname]['ansible_memory_mb']['real'].total | int >= 52000
+
+    - name: define heap_size for systems with less than 52G memory
+      set_fact:
+        min_heapsize: "{{ (hostvars[inventory_hostname]['ansible_memory_mb']['real'].total / 2) | int}}m"
+      when: hostvars[inventory_hostname]['ansible_memory_mb']['real'].total | int < 52000
+    # ------------------------------------------------ END HEAP SIZING ----------------------------------------------
+
+
+
+    # ----------------------------------------------- IP LISTS ------------------------------------------------------
+    # GENERATE IP LISTS FOR NETWORK CONFIGURATIONS (USED IN ROLE CONFIGURATIONI BELOW)
+    # according to documentation:
+    #   - https://www.elastic.co/guide/en/elasticsearch/reference/current/discovery-settings.html
+    #   - https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-discovery-bootstrap-cluster.html
+    #..................................................................................................................
+    - name: get list of all nodes in the cluster
+      set_fact:
+        list_of_ips: "{{ groups['elasticsearch_servers'] | map('extract', hostvars, ['ansible_facts', hostvars[inventory_hostname]['custom_elasticsearch_network_interface_name'], 'ipv4', 'address']) | join(',') }}"
+        list_of_master_eligable_nodes: "{{ groups['elasticsearch_master_servers'] | map('extract', hostvars, ['inventory_hostname']) | join(',') }}"
+    # ----------------------------------------------- END IP LISTS --------------------------------------------------
+
+
+
+
+
+# ================================================================================================================
+# MASTER ELIGABLE NODES
+# ================================================================================================================
+
+- hosts: elasticsearch_master_servers
+  tags: "installation"
+  gather_facts: yes
+  roles:
+    - role: elastic.elasticsearch
+  vars:
+    # ------------------------------------------- INSTALLATION INSTRUCTIONS -------------------------------------------
+    es_version: "{{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_version'] }}"
+    es_start_service: false
+    es_java_install: true
+    update_java: true # use latest java version
+    # ----------------------------------------- END INSTALLATION INSTRUCTIONS -----------------------------------------
+    
+
+
+
+    # -------------------------------------- ELASTICSEARCH CONFIGURATION ----------------------------------------------
+    # configuring elasticsearch.yml config file
+
+    # PATH DATA AND PATH LOGS FOR SECURITY
+    # according to documentation:
+    #   - https://www.elastic.co/guide/en/elasticsearch/reference/current/path-settings.html
+    #..................................................................................................................
+    es_data_dirs:                                                                                             # important for data security
+      - "{{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_data_dir'] }}"                 # important for data security    
+    es_log_dir: "{{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_log_dir'] }}"          # important for data security
+
+    es_config:
+      # CLUSTER NAME FOR DISCOVERY PROCESS
+      # according to documentation:
+      #     - https://www.elastic.co/guide/en/elasticsearch/reference/current/cluster.name.html
+      #..................................................................................................................
+      cluster.name: "{{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_cluster_name'] }}" # important for cluster formation
+
+      # SETUP NODE FUNCTION
+      # according to documentation:
+      #     - https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-node.html#data-node
+      #..................................................................................................................
+      node.data: true                                                                                        # important for cluster formation
+      node.master: true                                                                                       # important for cluster formation
+
+      # ENABLE MEMORY LOCKING
+      # according to documentation:
+      #     - https://www.elastic.co/guide/en/elasticsearch/reference/current/setup-configuration-memory.html
+      #..................................................................................................................
+      bootstrap.memory_lock: true                                                                             # important for elasticsearch hardware performance
+
+
+      ######################################################################################################################
+      # DISCOVERY SETTINGS
+
+      # IMPORTANT DISCOVERY SETTINGS (IP LISTS GENERATED AT BEGINNING OF THE FILE)
+      # according to documentation:
+      #   - https://www.elastic.co/guide/en/elasticsearch/reference/current/discovery-settings.html
+      #   - https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-discovery-bootstrap-cluster.html
+      #   - https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-discovery-hosts-providers.html
+      #..................................................................................................................
+      discovery.seed_providers: settings                                                                      # important for cluster formation
+      discovery.seed_hosts: "{{ list_of_ips }}"                                                               # important for cluster formation        
+      #discovery.type: single-node                                                                            # trigger to form single node 'cluster'
+      #discovery.cluster_formation_warning_timeout: "10s"
+      #discovery.find_peers_interval: "1s"
+      #discovery.probe.connect_timeout: "3s"
+      #discovery.probe.handshake_timeout: "1s"
+      #discovery.request_peers_timeout: "3s"
+      #discovery.seed_resolver.max_concurrent_resolvers: 10
+      #discovery.seed_resolver.timeout: "5s"
+
+      # EXPERT CLUSTER SETTINGS
+      # according to documentation:
+      #   - https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-discovery-settings.html
+      #..................................................................................................................
+      cluster.initial_master_nodes: "{{ list_of_master_eligable_nodes }}"                                     # important for master election
+      #cluster.auto_shrink_voting_configuration: true                       
+      #cluster.election.back_off_time: "100ms"
+      #cluster.election.duration: "500ms"
+      #cluster.election.initial_timeout: "100ms"
+      #cluster.election.max_timeout: "10s"
+      #cluster.fault_detection.follower_check.interval: "1s"
+      #cluster.fault_detection.follower_check.timeout: "10s"
+      #cluster.fault_detection.follower_check.retry_count: 3
+      #cluster.fault_detection.leader_check.interval: "1s"
+      #cluster.fault_detection.leader_check.timeout: "10s"
+      #cluster.fault_detection.leader_check.retry_count: 3
+      #cluster.follower_lag.timeout: "90s"
+      #cluster.join.timeout: "60s"
+      #cluster.max_voting_config_exclusions: 10
+      #cluster.publish.timeout: "30s"
+      #cluster.no_master_block: "write"
+      ######################################################################################################################
+
+
+      ######################################################################################################################
+      # SHARD ALLOCATION AND CLUSTER LEVEL ROUTING
+
+      # CLUSTER LEVEL SHARD ALLOCATION SETTINGS
+      # according to documentation:
+      #   - https://www.elastic.co/guide/en/elasticsearch/reference/current/shards-allocation.html
+      #..................................................................................................................
+      cluster.routing.allocation.enable: all
+      #cluster.routing.allocation.node_concurrent_incoming_recoveries: 2                            
+      #cluster.routing.allocation.node_concurrent_outgoing_recoveries: 2                            
+      #cluster.routing.allocation.node_initial_primaries_recoveries: 4                              
+      #cluster.routing.allocation.same_shard.host: false                                            
+      #cluster.routing.rebalance.enable: all                                                        
+      #cluster.routing.allocation.allow_rebalance: indices_all_active                               
+      #cluster.routing.allocation.cluster_concurrent_rebalance: 2                                   
+      #cluster.routing.allocation.balance.shard: 0.45f                                              
+      #cluster.routing.allocation.balance.index: 0.55f                                              
+      #cluster.routing.allocation.balance.threshold: 1.0f                                           
+
+      # DISK BASED SHARD ALLOCATION
+      # according to documentation:
+      #   - https://www.elastic.co/guide/en/elasticsearch/reference/current/disk-allocator.html
+      #..................................................................................................................
+      #cluster.routing.allocation.disk.threshold_enabled: true                                      
+      #cluster.routing.allocation.disk.watermark.low: "85%"                                         
+      #cluster.routing.allocation.disk.watermark.high: "90%"                                        
+      #cluster.routing.allocation.disk.watermark.flood_stage: "95%"                                 
+      #cluster.info.update.interval: "30s"                                                          
+      #cluster.routing.allocation.disk.include_relocations: true                                    
+
+      # SHARD ALLOCATION AWARENESS
+      # important in virtualized environments
+      # according to documentation:
+      #   - https://www.elastic.co/guide/en/elasticsearch/reference/current/allocation-awareness.html
+      #..................................................................................................................
+      #node.attr.rack_id: rack_one                                                                  
+      #cluster.routing.allocation.awareness.attributes: rack_id                                     
+
+      # CLUSTER LEVEL SHARD ALLOCATION FILTERING
+      # important if a node gets decommission
+      # according to documentation:
+      #   - https://www.elastic.co/guide/en/elasticsearch/reference/current/allocation-filtering.html#allocation-filtering
+      #..................................................................................................................
+      # cluster.routing.allocation.exclude._ip: ""                                                  
+
+      # MISCELLANOUS CLUSTER SETTINGS
+      # according to documentation:
+      #   - https://www.elastic.co/guide/en/elasticsearch/reference/current/misc-cluster.html#misc-cluster
+      #..................................................................................................................
+      #cluster.blocks.read_only: false                                                              
+      #cluster.blocks.read_only_allow_delete: false                                                 
+      #cluster.max_shards_per_node: 1000                                                            
+      #cluster.indices.tombstones.size: 500                                                         
+      ######################################################################################################################
+
+
+      ######################################################################################################################
+      # NETWORK SETTINGS
+
+      # SETUP CUSTOM NETWORK SETTINGS
+      # according to documentation:
+      #   - https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-network.html
+      #   - https://www.elastic.co/guide/en/elasticsearch/reference/current/discovery-settings.html
+      #..................................................................................................................
+      network.host: "_{{ hostvars[inventory_hostname]['custom_elasticsearch_network_interface_name'] }}_, _local_"  # important for cluster formation
+      #network.bind_host: network.host                                                                              # important for cluster formation
+      #network.publish_host: network.host                                                                           # important for cluster formation    
+      network.tcp.no_delay: true
+      network.tcp.keep_alive: true
+      network.tcp.reuse_address: true
+      #network.tcp.send_buffer_size: unbound
+      #network.tcp.receive_buffer_size: unbound
+      ######################################################################################################################
+
+
+      ######################################################################################################################
+      # TRANSPORT SETTINGS
+
+      # SETUP CUSTOM TRANSPORT SETTINGS
+      # according to documentation:
+      #     - https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-transport.html
+      #..................................................................................................................
+      #transport.port: 9300-9400                                                                                    # important for cluster formation
+      #transport.publish_port: transport.port                                                                       # important for cluster formation
+      #transport.bind_host: network.bind_host                                                                       # important for cluster formation
+      #transport.publish_host: network.publish_host                                                                 # important for cluster formation  
+      #transport.host: network.host                                                                       
+      #transport.connect_timeout: "30s"
+      #transport.compress: true
+      ######################################################################################################################
+
+
+      ######################################################################################################################
+      # HTTP SETTINGS
+
+      # SETUP CUSTOM USED HTTP SETTINGS
+      # according to documentation:
+      #     - https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-network.html
+      #     - https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-http.html
+      #..................................................................................................................
+      http.port: "{{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_http_port'] }}"             # important for cluster formation
+      #http.publish_port: http.port                                                                                 # important for cluster formation
+      #http.bind_host: http.host                                                                                    # important for cluster formation
+      #http.publish_host: network.publish_host                                                                      # important for cluster formation
+      #http.host: network.host                                                                                      # important for cluster formation
+      #http.max_content_length: "100mb"
+      #http.max_initial_line_length: "4kb"
+      #http.max_header_size: "8kb"
+      #http.compression: true
+      #http.compression_level: 3
+      #http.cors.enabled: false
+      #http.cors.allow-origin: []
+      #http.cors.max-age: 1728000
+      #http.cors.allow-methods: "OPTIONS, HEAD, GET, POST, PUT, DELETE"
+      #http.cors.allow-headers: "X-Requested-With, Content-Type, Content-Length"
+      #http.cors.allow-credentials:false
+      #http.detailed_errors.enabled:true
+      #http.pipelining.max_events:10000
+      #http.max_warning_header_count:unbounded
+      #http.max_warning_header_size:unbounded
+      ######################################################################################################################
+
+
+      ######################################################################################################################
+      # GLOBAL INDICE SETTINGS
+      # The indices module controls index-related settings that are globally managed for all indices, rather than being configurable at a per-index level.
+
+      # SETUP CUSTOM CIRCUIT BREAKERS (PREVENT FROM OutOfMemoryError ERRORS)
+      # according to documentation:
+      #     - https://www.elastic.co/guide/en/elasticsearch/reference/current/circuit-breaker.html
+      #..................................................................................................................
+      #indices.breaker.total.use_real_memory: true
+      #indices.breaker.total.limit: "95%"
+      #indices.breaker.fielddata.limit: "40%"                                                   
+      #indices.breaker.fielddata.overhead: 1.03                                                 
+      #indices.breaker.request.limit: "60%"                                                     
+      #indices.breaker.request.overhead: 1                                                      
+      #network.breaker.inflight_requests.limit: "100%"                                          
+      #network.breaker.inflight_requests.overhead: 2
+      #indices.breaker.accounting.limit: "100%"
+      #indices.breaker.accounting.overhead: 1
+      #script.max_compilations_rate: "75/5m"
+
+      # FIELDDATA CACHE
+      # The amount of memory used for the field data cache
+      # used mainly when sorting on or computing aggregations on a field
+      # according to documentation:
+      #     - https://www.elastic.co/guide/en/elasticsearch/reference/current/modules-fielddata.html
+      #..................................................................................................................
+      #indices.fielddata.cache.size: unbounded
+
+      # INDEXING BUFFER
+      # store newly indexed documents
+      # according to documentation:
+      #     - https://www.elastic.co/guide/en/elasticsearch/reference/current/indexing-buffer.html
+      #..................................................................................................................
+      #indices.memory.index_buffer_size: "10%"
+      #indices.memory.min_index_buffer_size: "48mb"
+      #indices.memory.max_index_buffer_size: unbounded
+
+      # SHARD REQUEST CACHE
+      # The shard-level request cache module caches the local results on each shard (default no hits cached)
+      # can be enabled and disabled on index createion                                        # trigger to enable and disable shard level result caching
+      # according to documentation:
+      #     - https://www.elastic.co/guide/en/elasticsearch/reference/current/shard-request-cache.html
+      #..................................................................................................................
+      #indices.requests.cache.size: "2%"
+      #indices.requests.cache.expire: unbound #default index refresh rate
+      ######################################################################################################################
+
+    # ------------------------------------ END ELASTICSEARCH CONFIGURATION ---------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+    # ----------------------------------------------- ADJUST JVM SETTINGS ----------------------------------------------
+    # configuring /etc/elasticsearch/jvm.options file
+    
+    # SETUP HEAP SIZE (SYSTEM DEPENDENT, SEE CALCULATIONS AT BEGINNING OF THE FILE)
+    # according to documentation:
+    #   - https://www.elastic.co/guide/en/elasticsearch/reference/current/heap-size.html
+    #   - https://www.elastic.co/guide/en/elasticsearch/guide/current/heap-sizing.html#heap-sizing
+    #..................................................................................................................
+    es_heap_size: "{{ min_heapsize }}"                                                                              # important for elasticsearch hardware performance
+    es_jvm_custom_parameters:
+      # SETUP HEAPDUMP PATH
+      # according to documentation:
+      #     - https://www.elastic.co/guide/en/elasticsearch/reference/current/heap-dump-path.html
+      #..................................................................................................................
+      - "-XX:HeapDumpPath={{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_heap_dump_path'] }}"
+
+      # SET DNS Cache Settings
+      # according to documentation:
+      #     - https://www.elastic.co/guide/en/elasticsearch/reference/current/networkaddress-cache-ttl.html
+      #     - https://docs.oracle.com/javase/8/docs/technotes/guides/net/properties.html
+      #..................................................................................................................
+      - "-Des.networkaddress.cache.ttl={{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_dns_cache_ttl'] }}"
+      - "-Des.networkaddress.cache.negative.ttl={{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_dns_cache_negative_ttl'] }}"
+
+      # SETUP LOGGING MECHANISM FOR POINTER VERIFICATION (DEPENDENT ON HEAP SIZE)
+      # according to documentation:
+      #   - https://www.elastic.co/guide/en/elasticsearch/reference/current/heap-size.html
+      #   - https://www.elastic.co/guide/en/elasticsearch/guide/current/heap-sizing.html#compressed_oops
+      #..................................................................................................................
+      - "-XX:+UnlockDiagnosticVMOptions"
+      - "-XX:+PrintCompressedOopsMode"
+
+      # JVM FATAL ERROR LOGS
+      # according to documentation:
+      #   - https://www.elastic.co/guide/en/elasticsearch/reference/current/error-file-path.html
+      #..................................................................................................................
+      - "-XX:ErrorFile={{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_jvm_error_file'] }}"
+
+      # JNA TEMPORARY DIRECTORY NOT MOUNTED WITH noexec
+      # according to documentation:
+      #   - https://www.elastic.co/guide/en/elasticsearch/reference/current/executable-jna-tmpdir.html
+      #..................................................................................................................
+      - "-Djna.tmpdir={{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_jna_tmp_dir'] }}"
+
+    # --------------------------------------------- END ADJUST JVM SETTINGS -------------------------------------------
+
+
+
+
+    # ---------------------------------------------- ADJUST SYSTEM LIMITS ---------------------------------------------
+    # CONFIGURATION ON /etc/defaults/elasticsearch file
+    # set system configurations (no memlock)
+
+    # FILE DESCRIPTORS
+    # according to documentation:
+    #   - https://www.elastic.co/guide/en/elasticsearch/reference/current/setting-system-settings.html
+    #   - https://www.elastic.co/guide/en/elasticsearch/reference/current/file-descriptors.html
+    #..................................................................................................................
+    es_max_open_files: "{{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_number_of_open_files'] }}"      # important for elasticsearch hardware performance
+    
+    # VIRTUAL MEMORY
+    # according to documentation:
+    #    - https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html
+    #..................................................................................................................
+    es_max_map_count: "{{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_virtual_memory_mmap_counts'] }}" # important for elasticsearch hardware performance
+
+    # NUMBER OF THREADS
+    # according to documentation:
+    #     - https://www.elastic.co/guide/en/elasticsearch/reference/current/max-number-of-threads.html
+    #..................................................................................................................
+    es_max_threads: "{{ hostvars[groups['elasticsearch_servers'][0]]['custom_elasticsearch_number_of_threads'] }}"            # important for elasticsearch hardware performance
+
+    # MEMLOCK
+    # adjust sysd_config_file to set LimitMEMLOCK=infinite
+    # according to documentation:
+    #     - https://www.elastic.co/guide/en/elasticsearch/reference/current/setting-system-settings.html#systemd
+    #..................................................................................................................
+    sysd_config_file: "/usr/lib/systemd/system/elasticsearch.service"                                                         # important for elasticsearch hardware performance
+    # -------------------------------------------- END ADJUST SYSTEM LIMITS -------------------------------------------
+
+
+
+
+
+
+
+    # -------------------------------------------- ADDITIONAL PLUGINS -------------------------------------------
+    es_plugins:
+     - plugin: mapper-size
+    # ----------------------------------------- END ADDITIONAL PLUGINS -----------------------------------------
+

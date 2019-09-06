@@ -1,0 +1,27 @@
+================================================================================================================================================
+================================================================================================================================================
+
+Meilenstein 5 - Finale
+
+	- Hypothetische Beispielanwendung
+		- Paginierte Requests auf Elasticsearch
+			- https://www.elastic.co/guide/en/elasticsearch/client/php-api/current/index.html
+			- auf Basis des in Meilenstein 2 entstandenen Example Queries
+		- Requests auf MySql (über Redis) zum Laden ergänzender Daten zu den Ergebnissdaten der Suche 
+			- Einfaches SQL Statement für das Laden der THumbnails pro Suchergebnis
+		- Einfaches HTML zur Darstellung der Suchergebnisse
+
+	- Abgabe
+		- Beschreibung der Anwendung
+		- Finale Kernfragen:
+			- Pro Szenario (Datenmenge / Requestrate):
+				- Mit welchen Konstellationen an Clusterkonfigurationen (Redis, MySQL, Frontend, Elasticsearch) sind im 
+				besten Fall (alle Caches heiss) Antwortzeiten unter 4 Sekunden möglich
+				- Mit welchen Konstellationen an Clusterkonfigurationen (Redis, MySQL, Frontend, Elasticsearch) sind im 
+				schlechtesten Fall (alle Caches kalt) Antwortzeiten unter 6 Sekunden möglich
+
+====================================================================================================================================================
+====================================================================================================================================================
+
+
+

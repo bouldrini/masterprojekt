@@ -1,0 +1,90 @@
+---
+
+#--------------------------------------------------------- ADJUST SYSTEM PERMISSIONS -----------------------------------------------------------
+# ENSURE LIMITS ARE NOT IGNORED AT STARTUP
+# important for elasticsearch hardware performance
+# according to documentation:
+#    -https://www.elastic.co/guide/en/elasticsearch/reference/current/setup-configuration-memory.html
+#..................................................................................................................
+- name: Ensure pam_limits.so line is uncommented to make processes started by init.d use limits.conf
+  replace:
+    path: /etc/pam.d/su
+    regexp: '# session    required   pam_limits.so'
+    replace: 'session    required   pam_limits.so'
+
+- name: Ensure pam_limits.so line is uncommented to make processes started by init.d use limits.conf
+  replace:
+    path: /etc/pam.d/su
+    regexp: '#session    required   pam_limits.so'
+    replace: 'session    required   pam_limits.so'
+#--------------------------------------------------------- END ADJUST SYSTEM PERMISSIONS --------------------------------------------------------
+
+
+
+
+#--------------------------------------------------------- ADJUST SYSTEM LIMITS ------------------------------------------------------------------
+
+# MANUALLY ADJUST MEMLOCK LIMIT SETTINGS
+# important for elasticsearch hardware performance
+# according to documentation:
+#    -https://www.elastic.co/guide/en/elasticsearch/reference/current/setup-configuration-memory.html
+#..................................................................................................................
+- name: Update /etc/security/limits.conf to allow soft memlock for elasticsearch (adjustable through group variable custom_elasticsearch_soft_memlock, default unlimited)
+  lineinfile:
+    path: /etc/security/limits.conf
+    line: 'elasticsearch soft memlock {{ elasticsearch_soft_memlock }}'
+    create: yes
+
+- name: Update /etc/security/limits.conf to allow hard memlock for elasticsearch (adjustable through group variable custom_elasticsearch_hard_memlock, default unlimited)
+  lineinfile:
+    path: /etc/security/limits.conf
+    line: 'elasticsearch hard memlock {{ elasticsearch_hard_memlock }}'
+    create: yes
+
+# MANUALLY ADJUST DISABLE SWAPPING
+# important for elasticsearch hardware performance
+# according to documentation:
+#    -https://www.elastic.co/guide/en/elasticsearch/reference/current/setup-configuration-memory.html
+#..................................................................................................................
+- name: Update /etc/sysctl.conf to set vm.swappiness=1 to reduce the kernels tendency to swap
+  lineinfile:
+    path: /etc/sysctl.conf
+    line: 'vm.swappiness=1'
+    create: yes
+
+# MANUALLY ADJUST FILE DESCRIPTORS
+# important for elasticsearch hardware performance
+# according to documentation:
+#   - https://www.elastic.co/guide/en/elasticsearch/reference/current/setting-system-settings.html
+#   - https://www.elastic.co/guide/en/elasticsearch/reference/current/file-descriptors.html
+#..................................................................................................................
+- name: Update /etc/security/limits.conf to allow a huge number of open files for elasticsearch (adjustable through group variable custom_elasticsearch_number_of_open_files, default 65535)
+  lineinfile:
+    path: /etc/security/limits.conf
+    line: 'elasticsearch  -  nofile  {{ elasticsearch_number_of_open_files }}'
+    create: yes
+
+# MANUALLY ADJUST VIRTUAL MEMORY
+# important for elasticsearch hardware performance
+# according to documentation:
+#    - https://www.elastic.co/guide/en/elasticsearch/reference/current/vm-max-map-count.html
+#..................................................................................................................
+- name: Update /etc/sysctl.conf to allow a huge number of mmap counts (virtual memory) for elasticsearch (adjustable through group variable custom_elasticsearch_virtual_memory_mmap_counts, default 262144)
+  lineinfile:
+    path: /etc/sysctl.conf
+    line: 'vm.max_map_count={{ elasticsearch_virtual_memory_mmap_counts }}'
+    create: yes
+
+# MANUALLY ADJUST NUMBER OF THREADS
+# important for elasticsearch hardware performance
+# according to documentation:
+#     - https://www.elastic.co/guide/en/elasticsearch/reference/current/max-number-of-threads.html
+#..................................................................................................................
+- name: Update /etc/security/limits.conf to allow a huge number of threads for elasticsearch (adjustable through group variable custom_elasticsearch_number_of_threads, default 4096)
+  lineinfile:
+    path: /etc/security/limits.conf
+    line: 'elasticsearch -  nproc {{ elasticsearch_number_of_threads }}'
+    create: yes
+#--------------------------------------------------------- END ADJUST SYSTEM LIMITS ---------------------------------------------------------------
+
+
